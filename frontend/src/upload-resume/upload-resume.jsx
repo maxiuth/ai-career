@@ -54,11 +54,13 @@ export default function UploadResume() {
         <div className="results-card">
           <h2>Results for: someone</h2>
           <p>Match Score: 95</p>
-          <ul>
+          {/* <ul>
             {results.extracted_skills.map((skill, i) => (
               <li key={i}>{skill}</li>
             ))}
-          </ul>
+          </ul> */}
+
+          <p>{results}</p>
         </div>
       )}
     </div>

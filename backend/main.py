@@ -12,7 +12,6 @@ CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5000"],
 def extract_text_from_pdf(file_stream):
     """Extracts text from a file-like object using pdfplumber."""
     text = ""
-    # Use io.BytesIO to read the file from memory without saving to disk
     with pdfplumber.open(io.BytesIO(file_stream.read())) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
@@ -33,16 +32,17 @@ def process_resume():
     if not resume_text.strip():
         return jsonify({"error": "Could not extract text from PDF"}), 422
 
-    # 2. Run your ML / NLP Model Logic here
+    #ML / NLP Model Logic here
     # Example: match_results = my_ml_model.predict(resume_text)
     
-    # Mocking a response for now
-    return jsonify({
-        "status": "success",
-        "raw_text_preview": resume_text[:200] + "...", # Show first 200 chars
-        "extracted_skills": ["Python", "Data Science", "Flask"], # Replace with ML output
-        "match_score": 92
-    })
+    # return jsonify({
+    #     "status": "success",
+    #     "raw_text_preview": resume_text[:200] 
+    #     "extracted_skills": ["Python", "Data Science", "Flask"]
+    #     "match_score": 92
+    # })
+
+    return jsonify(resume_text)
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
