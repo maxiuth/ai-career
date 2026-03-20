@@ -7,8 +7,8 @@ import UploadResume from "./upload-resume/upload-resume";
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/resume" element={<UploadResume />} />
+      {/* <Route path="/" element={<Home />} /> */}
+      <Route path="/" element={<UploadResume />} />
     </Routes>
   );
 }
