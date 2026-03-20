@@ -4,7 +4,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5000"], 
+     supports_credentials=True,
+     methods=["GET", "POST", "OPTIONS"],
+     allow_headers=["Content-Type"])
 
 def extract_text_from_pdf(file_stream):
     """Extracts text from a file-like object using pdfplumber."""
