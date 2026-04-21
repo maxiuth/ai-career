@@ -1,5 +1,8 @@
+from pydoc import text
+
 import pdfplumber
 import io
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -17,7 +20,19 @@ def extract_text_from_pdf(file_stream):
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
+                # Remove URLs and Emails
+                text = re.sub(r'\S+@\S+', '', text)
+                text = re.sub(r'http\S+|www\S+', '', text)
+                
+                # Remove special characters but keep '+', '.', and '#' for tech terms
+                # This regex removes most symbols but leaves alphanumeric and specific tech chars
+                text = re.sub(r'[^a-zA-Z0-9\s+#.]', '', text)
+
+                # Remove extra whitespace
+                text = re.sub(r'\s+', ' ', text).strip()
+
     return text
+
 
 @app.route('/api/upload-resume', methods=['POST'])
 def process_resume():
