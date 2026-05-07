@@ -40,6 +40,8 @@ def process_resume():
         return jsonify({"error": "No file uploaded"}), 400
     
     file = request.files['resume']
+    role = request.form.get('role', '')
+    city = request.form.get('city', '')
     
     # 1. Extract the text
     resume_text = extract_text_from_pdf(file)
@@ -57,6 +59,7 @@ def process_resume():
     #     "match_score": 92
     # })
 
+    # return jsonify(resume_text)
     return jsonify(resume_text)
 
 if __name__ == '__main__':

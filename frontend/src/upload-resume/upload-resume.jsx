@@ -3,6 +3,8 @@ import { useState } from "react";
 
 export default function UploadResume() {
   const [resume, setResume] = useState(null);
+  const [role, setRole] = useState("");
+  const [city, setCity] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,11 +20,14 @@ export default function UploadResume() {
 
   const handleUpload = async () => {
     if (!resume) return alert("Please a resume file to upload.");
+    if (!role) return alert("Please enter a preferred job title");
+    if (!city) return alert("Please enter a preferred city");
 
     setLoading(true);
     const formData = new FormData();
     formData.append("resume", resume);
-
+    formData.append("role", role);
+    formData.append("city", city);
     try {
       const response = await fetch("http://127.0.0.1:5000/api/upload-resume", {
         method: "POST",
@@ -47,9 +52,27 @@ export default function UploadResume() {
         accept=".pdf"
         onChange={handleFileChange}
       />
-      <button onClick={handleUpload} disabled={loading}>
-        {loading ? "Uploading..." : "Upload"}
-      </button>
+      <p>Please enter a preferred role</p>
+      <input
+        type="text"
+        id="role"
+        placeholder="Software Engineer"
+        value={role}
+        onChange={(e) => setRole(e.target.value)}
+      />
+      <p>Please enter a preferred city</p>
+      <input
+        type="text"
+        id="city"
+        placeholder="Seattle"
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+      />
+      <p>
+        <button onClick={handleUpload} disabled={loading}>
+          {loading ? "Uploading..." : "Upload"}
+        </button>
+      </p>
       {results && (
         <div className="results-card">
           <h2>Results for: someone</h2>
