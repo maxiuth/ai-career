@@ -14,10 +14,10 @@ def test_api():
       "x-api-key": "ak_gl43m34brq9m9b9vutakbmni61uyt79ot3esad9xz7pmi9z"
     },
     params={
-      "query": "software engineer"
+      "query": "software engineer jobs in seattle"
     })
     
-    print(type(results.json()['data']))
+    print(results.json()['data'])
 
 if __name__ == '__main__':
-    test_api()  
+  test_api()

@@ -70,7 +70,7 @@ export default function UploadResume() {
       />
       <p>
         <button onClick={handleUpload} disabled={loading}>
-          {loading ? "Uploading..." : "Upload"}
+          {loading ? "Uploading..." : "Start Evaluating!"}
         </button>
       </p>
       {results && (
