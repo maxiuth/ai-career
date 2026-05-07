@@ -6,11 +6,22 @@ import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+import requests
+from sentence_transformers import SentenceTransformer, util
+
+from google import genai
+import os
+import json
+
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5000"], 
      supports_credentials=True,
      methods=["GET", "POST", "OPTIONS"],
      allow_headers=["Content-Type"])
+
+# Initialize the client with your API key
+client = genai.Client(api_key="AIzaSyDztGt6ZDIpmj3N-56GDt_CwIstbLwEXGc")
+
 
 def extract_text_from_pdf(file_stream):
     """Extracts text from a file-like object using pdfplumber."""
@@ -60,7 +71,59 @@ def process_resume():
     # })
 
     # return jsonify(resume_text)
-    return jsonify(resume_text)
+
+    results = requests.get(
+    "https://api.openwebninja.com/jsearch/search",
+    headers={
+      "x-api-key": "ak_gl43m34brq9m9b9vutakbmni61uyt79ot3esad9xz7pmi9z"
+    },
+    params={
+      "query": "software engineer jobs in seattle"
+    })
+    
+    jobs = results.json()['data']
+
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+
+    resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+
+    job_description = jobs[0]['job_description']
+
+    job_embedding = model.encode(job_description, convert_to_tensor=True)
+
+    score = util.cos_sim(resume_embedding, job_embedding).item()
+
+    # 3. Create the Agentic Prompt
+    prompt = f"""
+    You are a Career Strategist. Analyze the following resume against these target roles: {job_description}.
+    
+    Resume Text: {resume_text}
+    
+    Perform a deep-dive comparison between the [RESUME_TEXT] and [JOB_DESCRIPTION]. 
+
+    1. **Match Score & Logic:** Provide a match percentage based on "Essential Requirements" vs. "Nice to Haves." Explain the reasoning.
+    2. **Missing Pillars:** List the top 3-5 critical skills or certifications missing.
+    3. **Resume "Reframing" Suggestions:** For every 2 missing skills, suggest one way to rewrite an existing bullet point in the resume to imply that skill or show transferable experience.
+    4. **Pivot Strategy:** If the user is missing more than 40% of the requirements, provide a "Bridge Plan"—a list of 3 actionable steps (e.g., a specific type of project or a certification) to make this resume competitive within 30 days.
+
+    ### OUTPUT FORMAT
+    Return the analysis in a clean JSON-like structure or Markdown with the following headers: 
+    - Analysis Summary
+    - Critical Gaps
+    - Optimization Recommendations
+    - Strategic Pivot Plan
+    """
+
+    # 4. Generate Content
+    response = client.models.generate_content(
+    model="gemini-2.5-flash", 
+    contents=prompt
+)
+    
+    return jsonify(response.text)
+
+    # print(round(score * 100, 1)
+
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
