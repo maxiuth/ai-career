@@ -31,6 +31,25 @@ OPEN_WEB_NINJA_API_URL = os.getenv("OPEN_WEB_NINJA_API_URL")
 # Initialize the Gemini client
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+# Define the schema to match your exact requirements
+response_schema = {
+    "type": "OBJECT",
+    "properties": {
+        "Matching Score": {"type": "NUMBER"},
+        "Analysis": {"type": "STRING"},
+        "Critical Gaps": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "Optimization Recommendations": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "Strategic Pivot Plan": {"type": "STRING"}
+    },
+    "required": [
+        "Matching Score", 
+        "Analysis", 
+        "Critical Gaps", 
+        "Optimization Recommendations", 
+        "Strategic Pivot Plan"
+    ]
+}
+
 
 def extract_text_from_pdf(file_stream):
     """Extracts text from a file-like object using pdfplumber."""
@@ -75,54 +94,90 @@ def process_resume():
       "x-api-key": OPEN_WEB_NINJA_API_KEY
     },
     params={
-      "query": "" + role + " jobs in " + city
+      "query": "" + role + " jobs in " + city,
+      "job_requirements": "under_3_years_experience"
     })
     
     jobs = results.json()['data']
 
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    # model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+    # resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+
+    results_analysis = []
 
     
     for i in range(5):
         job_description = jobs[i]['job_description']
         job_title = jobs[i]['job_title']
         job_apply_link = jobs[i]['job_apply_link']
-        job_embedding = model.encode(job_description, convert_to_tensor=True)
-        score = util.cos_sim(resume_embedding, job_embedding).item()
+        job_posted_at_datetime_utc = jobs[i]['job_posted_at_datetime_utc']
+        # job_embedding = model.encode(job_description, convert_to_tensor=True)
+        # score = util.cos_sim(resume_embedding, job_embedding).item()
 
         # 3. Create the Agentic Prompt
         prompt = f"""
-        You are a Career Strategist. Analyze the following resume against these target roles: {job_description}.
-    
+        Act as a Career Strategist. Analyze the following resume text against the user's references.
+        Focus on transferable skills and provide a candid reality check.
+
         Resume Text: {resume_text}
-    
-        Perform a deep-dive comparison between the [RESUME_TEXT] and [JOB_DESCRIPTION]. 
+        Target Roles: {job_description}
 
-        1. **Matching Logic:** Provide how the skills and experiences in the resume show matching and qualifications to the job provided based on "Essential Requirements" vs. "Nice to Haves." Explain the reasoning.
-        2. **Missing Pillars:** List the top 3-5 critical skills or certifications missing.
-        3. **Resume "Reframing" Suggestions:** For every 2 missing skills, suggest one way to rewrite an existing bullet point in the resume to imply that skill or show transferable experience.
-        4. **Pivot Strategy:** If the user is missing more than 40% of the requirements, provide a "Bridge Plan"—a list of 3 actionable steps (e.g., a specific type of project or a certification) to make this resume competitive within 30 days.
-
-        ### OUTPUT FORMAT
-        Return the analysis in a clean JSON-like structure or Markdown with the following headers: 
-        - Analysis Summary
-        - Critical Gaps
-        - Optimization Recommendations
-        - Strategic Pivot Plan
+        Provide a deep-dive analysis including specific technical gaps and a pivot plan 
+        if the candidate is not a direct match.
         """
 
         # 4. Generate Content
         response = client.models.generate_content(
-        model="gemini-2.5-flash", 
-        contents=prompt
-    )
+            model="gemini-2.5-flash",
+            config={
+            "response_mime_type": "application/json",
+            "response_schema": response_schema
+            }, 
+            contents=prompt)
+
+        raw_text = response.text.replace("```json", "").replace("", "").strip()
+
+        try:
+            # 2. Convert the string into a temporary dictionary
+            ai_data = json.loads(raw_text)
     
-    return jsonify(response.text)
+            # 3. Append to your results_analysis list
+            results_analysis.append({
+                "id": i,
+                "job_title": job_title,
+                "job_apply_link": job_apply_link,
+                "job_posted_at_datetime_utc": job_posted_at_datetime_utc,
+                # Use .get() to prevent crashes if the AI slightly changes a key name
+                "matching_score": ai_data.get("Matching Score"),
+                "analysis": ai_data.get("Analysis"),
+                "critical_gaps": ai_data.get("Critical Gaps"),
+                "optimization_recommendations": ai_data.get("Optimization Recommendations"),
+                "strategic_pivot_plan": ai_data.get("Strategic Pivot Plan")
+            })
 
-    # print(round(score * 100, 1)
+        except json.JSONDecodeError as e:
+            print(f"Error parsing AI response for job {i}: {e}")
+            # Optional: Append a dictionary with error info so the loop continues
+            results_analysis.append({
+                "id": i,
+                "job_title": job_title,
+                "error": "Could not parse AI analysis"
+            })
 
-
+    #     results_analysis.append({
+    #         "id": i,
+    #         "job_title": job_title,
+    #         "job_apply_link": job_apply_link,
+    #         "job_posted_at_datetime_utc": job_posted_at_datetime_utc,
+    #         "matching_score": response.value["Matching Score"],
+    #         "analysis": response.value["Analysis"],
+    #         "critical_gaps": response.value["Critical Gaps"],
+    #         "optimization_recommendations": response.value["Optimization Recommendations"],
+    #         "strategic_pivot_plan": response.value["Strategic Pivot Plan"]
+    #     }
+    # )
+    return jsonify(results_analysis)
+        
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
